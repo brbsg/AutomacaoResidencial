@@ -4,17 +4,28 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <RTClib.h>
+#include <painlessMesh.h>
+#include <Schedule.h>
+#include <TaskScheduler.h>
+
 //#include <IRremoteESP8266.h>
+
+#define ID_NODE "ID:1-"
 
 #define MAXCLIENTS 6
 #define CHANNEL 8
 #define CS_PIN 15
 
-File myFile;
-RTC_DS3231 rtc;
+#define   MESH_PREFIX     "RedeMesh"
+#define   MESH_PASSWORD   "Mesh1234@"
+#define   MESH_PORT       5555
+
+//ESP - Local IP Address: 192.168.4.1
+char ssid[] = "Toni";
+char password[] = "oliveira";
 
 
-//========================================================
+//================= =======================================
 
 
 
@@ -30,16 +41,26 @@ void onDataReceive();
 
 void getDateTime();
 
+void sendMessage();
+
+void receivedCallback( uint32_t from, String &msg );
+void newConnectionCallback(uint32_t nodeId);
+void changedConnectionCallback();
+void nodeTimeAdjustedCallback(int32_t offset);
+
+
 
 
 //========================================================
 
 
-//ESP - Local IP Address: 192.168.4.1
-char ssid[] = "IpeToni";
-char password[] = "oliveira";
+File myFile;
+RTC_DS3231 rtc;
 
-String msg;
+painlessMesh mesh;
+Scheduler userScheduler;
+Task taskSendMessage(TASK_SECOND * 1 , TASK_FOREVER, &sendMessage);
+
 
 //hw_timer_t *timer = NULL;
 
@@ -50,9 +71,12 @@ IPAddress ip(192, 168, 0, 117);
 IPAddress gateway(192, 168, 0, 1);
 IPAddress subnet(255, 255, 255, 0);
 
+String msg;
+
 
 
 //========================================================
+
 
 // seco = 766
 // molhado = 380
@@ -117,6 +141,18 @@ void setup(){
     return;
   }
 
+  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
+  mesh.setDebugMsgTypes( ERROR | STARTUP );  // set before init() so that you can see startup messages
+
+  mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT );
+  mesh.onReceive(&receivedCallback);
+  mesh.onNewConnection(&newConnectionCallback);
+  mesh.onChangedConnections(&changedConnectionCallback);
+  mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+
+  userScheduler.addTask( taskSendMessage );
+  taskSendMessage.enable();
+
   // if(SD.begin(CS_PIN)){
   //   Serial.println("Cartão inicializado");
   // }else{
@@ -135,7 +171,9 @@ void setup(){
 void loop(){
   currentMillis = millis();
 
-  getDateTime();
+  mesh.update();
+
+  //getDateTime();
 
   if(hora >= 20 ){
     digitalWrite(D0, LOW);
@@ -148,6 +186,10 @@ void loop(){
   availableClient();
   availableMessage();
 
+  if(startMillis-currentMillis == 1000){
+    sendMessage();
+    startMillis = currentMillis;
+  }
   
   //myFile = SD.open("LOG.txt", FILE_WRITE);
 
@@ -205,6 +247,30 @@ void loop(){
 //========================================================
 
 
+
+void receivedCallback( uint32_t from, String &msg ) {
+  
+  Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
+}
+
+void newConnectionCallback(uint32_t nodeId) {
+    Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
+}
+
+void changedConnectionCallback() {
+  Serial.printf("Changed connections\n");
+}
+
+void nodeTimeAdjustedCallback(int32_t offset) {
+    Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(),offset);
+}
+
+void sendMessage() {
+  String msg = ID_NODE;
+  msg += mesh.getNodeId();
+  mesh.sendBroadcast( msg );
+  taskSendMessage.setInterval( random( TASK_SECOND * 1, TASK_SECOND * 5 ));
+}
 
 bool setIrrigationTime(int horaInicial, int minutoInicial, int horaFinal, int minutoFinal, int diasIrrigando){
 
@@ -385,8 +451,8 @@ void handleClient(){
 
 
 void setupWiFi(){
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(ssid, password);
+  
+  WiFi.begin(ssid, password);
   
   //WiFi.disconnect();
 
@@ -401,8 +467,6 @@ void setupWiFi(){
 
   Serial.println("");
   Serial.println("ESP32 está funcionando como AP. ");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.softAPIP());
   
   server.begin();
 
