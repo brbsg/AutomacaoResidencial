@@ -127,7 +127,7 @@ export default props => {
         
           <SendTimeButton onClick={sendTimerData} />
 
-          <MyButton onClick={e => handleLamp(e,'i')} buttonStyle={'small'} text1={'Irrigar'} text2={'(24 horas)'} />
+          <MyButton onClick={e => handleLampz} buttonStyle={'small'} text1={'Irrigar'} text2={'(24 horas)'} />
 
           <View style={{backgroundColor:'white', height:screenHeight*0.5}} ></View>
         </View>    
