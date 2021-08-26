@@ -1,27 +1,26 @@
-#include <ESP8266WiFi.h> 
-#include <SD.h>
-#include <SPI.h>
-#include <Wire.h>
-#include <RTClib.h>
-#include <painlessMesh.h>
-#include <vector>
+#include <Arduino.h>
+#include <WiFiServer.h>
+#include <WiFi.h>
+#include <esp_now.h>
+// #include <SD.h>
+// #include <SPI.h>
+// #include <Wire.h>
 //#include <IRremoteESP8266.h>
 
 #define ID_NODE "ID:1-"
 
-#define MAXCLIENTS 6
+#define MAXCLIENTS 8
+#define CHANNEL 1
+#define BUILTIN_LED 2
+#define FLASH_BUTTON 0 
 
-
-#define   MESH_SSID "RedeMesh"
-#define   MESH_PASSWORD "Mesh1234@"
-#define   MESH_PORT 5555
-
-#define SSID "Toni"
+#define SSID "TToni"
 #define PASSWORD "oliveira" 
 #define PORT 80
 
 
-// // //================= =======================================
+
+// // //=========================================================
 
 
 
@@ -30,81 +29,58 @@ void availableMessage();
 void handleClient();
 void setupWiFi();
 
-void initESPNow();
 void setupESPNOW();
-void onDataSent();
-void onDataReceive();
+void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
+void onDataReceive(const uint8_t *macAddr, const uint8_t *incomingData, int len);
 
 void getDateTime();
 
 void sendMessage();
 
-void receivedCallback( uint32_t from, String &msg );
-void newConnectionCallback(uint32_t nodeId);
-void changedConnectionCallback();
-void nodeTimeAdjustedCallback(int32_t offset);
-
-void taskPrintMeshTopology();
-void taskNewClients();
-void taskHandleClients();
-void taskCheckIP();
-
 void refreshConnections();
-void handleCommand(String cmd);
-void sendToClients(String msg);
-void receivedCallback(uint32_t from, String & cmd);
-bool verifyAndSetRelayState(String state);
-
-void setupMesh();
-
 
 
 
 // // //========================================================
 
 
-File myFile;
-RTC_DS3231 rtc;
 
-painlessMesh mesh;
-Scheduler scheduler;
-
-
-//Tarefa que mostra no monitor serial a topologia da rede mesh de 1 em 1 segundo
-Task t1(1000, TASK_FOREVER, &taskPrintMeshTopology, &scheduler, true);
-//Tarefa para verificar uma nova conexão feita pelo aplicativo está sendo feita
-Task t2(1, TASK_FOREVER, &taskNewClients, &scheduler, true);
-//Tarefa para verificar se há novas mensagens do aplicativo
-Task t3(1, TASK_FOREVER, &taskHandleClients, &scheduler, true);
-//Tarefa para verificar e guardar mudanças no IP
-Task t4(1000, TASK_FOREVER, &taskCheckIP, &scheduler, true);
+//File myFile;
 
 
 // // //hw_timer_t *timer = NULL;
 
 WiFiServer server(PORT);
-std::vector<WiFiClient> clients;
+WiFiClient clients[MAXCLIENTS];
 
-IPAddress myIP;
 
-IPAddress ip(192, 168, 0, 117);
+IPAddress ip(192, 168, 4, 1);
 IPAddress gateway(192, 168, 0, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 String msg;
-String ID = "LIGHT1";
-String ID_ON = ID + " ON";
-String ID_OFF = ID + " OFF";
-
-String currentState = ID_OFF;
 
 
 
-// // //========================================================
+// // // //========================================================
+
+
+
+uint8_t macPeers[6][6] = {
+  {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, //MAC de Broadcast
+  //{0x3C, 0x61, 0x05, 0x12, 0xA1, 0x20}, // MAC ESP32 Master
+  {0xE8, 0x68, 0xE7, 0x44, 0x60, 0x0B}, // MAC Sonoff Portão
+  {0xD8, 0xBF, 0xC0, 0x10, 0xC1, 0x11},
+  {0xDC, 0x4F, 0x22, 0x7E, 0x4D, 0x33},
+  {0xEC, 0xFA, 0xBC, 0x62, 0xB4, 0xF0},
+  {0x2C, 0xF4, 0x32, 0x49, 0xD0, 0xC7},
+  };
 
 
 // // // seco = 766
 // // // molhado = 380
+
+char lastRandom[20];
 
 // char weekDays[7][8] = {"Domingo","Segunda","Terca", "Quarta", "Quinta", "Sexta", "Sabado"};
 // int segundo = 0;
@@ -132,21 +108,25 @@ void setup(){
 
   // startMillis = millis();
 
-  // // pinMode(2, OUTPUT);
-  // // pinMode(D0,OUTPUT);
-  // // digitalWrite(2, HIGH);
-  // // digitalWrite(D0, HIGH);
+  pinMode(BUILTIN_LED, OUTPUT);
+  pinMode(FLASH_BUTTON, INPUT_PULLUP);
+  digitalWrite(BUILTIN_LED, LOW);
 
-  ID_ON.toUpperCase();
-  ID_OFF.toUpperCase();
-
-  server.begin(PORT);
-
-  setupMesh();
-
-  scheduler.startNow();
+  setupWiFi();
   
+  setupESPNOW();
 
+  int slavesCount = sizeof(macPeers)/6/sizeof(uint8_t);
+
+  for(int i=0; i<slavesCount; i++){
+    esp_now_peer_info_t slave;
+
+    slave.channel = CHANNEL;
+    slave.encrypt = 0;
+    memcpy(slave.peer_addr,macPeers[i], sizeof(macPeers[i]));
+
+    esp_now_add_peer(&slave);
+  }
   
   // Wire.begin(D1, D2);
   // Wire.status();
@@ -175,11 +155,9 @@ void setup(){
 
 
 void loop(){
-
-
-  mesh.update();
-
-  scheduler.execute();
+  
+  availableClient();
+  availableMessage();
 
   //getDateTime();
 
@@ -191,8 +169,7 @@ void loop(){
   //   digitalWrite(D0, HIGH);
   // } 
   
-  // availableClient();
-  // availableMessage();
+  
 
   // if(startMillis-currentMillis == 1000){
   //   sendMessage();
@@ -254,190 +231,105 @@ void loop(){
 
 
 
-void taskPrintMeshTopology() {
-  Serial.println(mesh.subConnectionJson());
-}
-
-void taskNewClients(){
-  // Se existir um novo client atribuimos para a variável
-  WiFiClient newClient = server.available(); 
-  
-  // Se o client for diferente de nulo
-  if(newClient) {      
-    // Inserimos no vector
-    clients.push_back(newClient);
-    // Exibimos na serial indicando novo client e a quantidade atual de clients
-    Serial.println("New client! size:"+String(clients.size()));
-  }
-}  
-
-// Função que verifica se o app enviou um comando
-void taskHandleClients()
-{
-  // String que receberá o comando vindo do aplicativo
-  String cmd;
-
-  // Atualizamos o vector deixando somente os clientes conectados
-  refreshConnections();
-
-  // Percorremos o vector
-  for(int i=0; i<clients.size(); i++){      
-    // Se existir dados a serem lidos
-    if(clients[i].available()){
-      // Recebemos a String até o '\n'
-      cmd = clients[i].readStringUntil('*');
-      // Verificamos o comando, enviando por parametro a String cmd
-      handleCommand(cmd);        
-    }          
-  }
-}
-
-void handleCommand(String cmd)
-{
-  // Se a String estiver vazia nao precisamos fazer nada
-  if (cmd.equals(""))
-    return;
-
-  //Coloca todos os caracters em maiúsculo
-  cmd.toUpperCase();
-
-  // Exibimos o comando recebido na serial
-  Serial.println("Received from app: " + cmd);
-  //Verifica se a mensagem é para este nó e modifica o estado do relê de acordo com o que foi enviado
-  if(verifyAndSetRelayState(cmd)) {
-    //Envia mensagem de confirmaçao de volta para o app
-    String confirmationMessage = cmd + " OK";
-    sendToClients(confirmationMessage);
-    Serial.println("Changed Relay status for this node: " + confirmationMessage);
-  }
-  //A mensagem não era para este nó então envia para todos os nós da rede mesh
-  else {
-    Serial.println("Sending command through mesh network");
-    //Envia o comando para todos os nós da rede mesh
-    mesh.sendBroadcast(cmd);
-  }
-}
 
 void refreshConnections(){
   // Flag que indica se pelo menos um client ser desconectou
   bool flag = false;
   
   // Objeto que receberá apenas os clients conectados
-  std::vector<WiFiClient> newVector;
+ // std::vector<WiFiClient> newVector;
 
   // Percorremos o vector
-  for(int i=0; i<clients.size(); i++){
-    // Verificamos se o client está desconectado
-    if(!clients[i].connected()){
-      // Exibimos na serial que um cliente se desconectou e a posição em que ele está no vector (debug)
-      Serial.println("Client disconnected! ["+String(i)+"]");
-      // Desconectamos o client
-      clients[i].stop();
-      // Setamos a flag como true indicando que o vector foi alterado
-      flag = true;          
-    }
-    else{
-      newVector.push_back(clients[i]); // Se o client está conectado, adicionamos no newVector
-    }
-  }
-  // Se pelo menos um client se desconectou, atribuimos ao vector "clients" os clients de "newVector"
-  if(flag) clients = newVector;
-}
-
-// //Função que envia mensagem para todos os apps conectados
-void sendToClients(String msg) {
-  for(int i=0; i<clients.size(); i++){
-    clients[i].print(msg);
-  }
-}
-
-bool verifyAndSetRelayState(String state) {
-  //Se for para ligar o relê deste nó
-  if(state == ID_ON) {
-    //Colocamos o pino em LOW por causa do nosso relê que libera a passagem de corrente quando está em LOW
-    digitalWrite(2, LOW);
-    //Guarda o estado atual
-    currentState = ID_ON;
-    //Exibe informações do display (se USE_DISPLAY estiver habilitado)
-
-    return true;
-  }
-
-  //Se for para ligar o relê deste nó
-  if (state == ID_OFF) {
-    //Colocamos o pino em HIGH por causa do nosso relê que corta a passagem de corrente quando está em HIGH
-    digitalWrite(2, HIGH);
-     //Guarda o estado atual
-    currentState = ID_OFF;
-    //Exibe informações do display (se USE_DISPLAY estiver habilitado)
-
-    return true;
-  }
-
-  return false;
-}
-
-void taskCheckIP() {
-  //Guarda o ip que o roteador deu para o esp
-  IPAddress ip = IPAddress(mesh.getStationIP());
-
-  //Se o ip mudou
-  if(myIP != ip){
-    //Guardamos o ip
-    myIP = ip;
-    //Mostramos o ip no monitor serial
-    Serial.println("IP: " + myIP.toString());
-    //Exibe informações do display (se USE_DISPLAY estiver habilitado)
-  }
-}
-
-void setupMesh() {
-  //As mensagens de debug da rede nesh apareceram no monitor serial
-  mesh.setDebugMsgTypes(ERROR | DEBUG| STARTUP | CONNECTION);
-
-  // O canal (nesse caso 6) deve ser o mesmo da rede do seu roteador. Verifique qual o canal se roteador usa e modifica de 6 para o número correto
-  mesh.init( MESH_SSID, MESH_PASSWORD, MESH_PORT, WIFI_AP_STA, 6);
-
-  //Conecta ao roteador
-  mesh.stationManual(SSID, PASSWORD);
-
-  //Informamos qual função irá ser executada quando recebemos uma mensagem
-  mesh.onReceive(&receivedCallback);
-}
-
-//Função que definimos que irá receber as mensagens da rede mesh
-void receivedCallback(uint32_t from, String & cmd) {
-  //Coloca todos os caracteres do comando em letra maiúscula
-  cmd.toUpperCase(); 
-
-  //Mostra o comando recebido
-  Serial.println("Received from mesh: " + cmd);
-   //Verifica se o comando é para este nó e modifica o estado do relê de acordo com o que foi enviado
-  if(verifyAndSetRelayState(cmd)) {
-    //Envia mensagem de confirmação para o app
-    String confirmationMessage = cmd + " OK";
-    sendToClients(confirmationMessage);
-    Serial.println("Changed Relay status for this node: " + confirmationMessage);
-  }
-  //Algum nó enviou de volta uma confirmação que devemos enviar para o app
-  else {
-    sendToClients(cmd);
-  }
+  // for(int i=0; i<clients.size(); i++){
+  //   // Verificamos se o client está desconectado
+  //   if(!clients[i].connected()){
+  //     // Exibimos na serial que um cliente se desconectou e a posição em que ele está no vector (debug)
+  //     Serial.println("Client disconnected! ["+String(i)+"]");
+  //     // Desconectamos o client
+  //     clients[i].stop();
+  //     // Setamos a flag como true indicando que o vector foi alterado
+  //     flag = true;          
+  //   }
+  //   else{
+  //     newVector.push_back(clients[i]); // Se o client está conectado, adicionamos no newVector
+  //   }
+  // }
+  // // Se pelo menos um client se desconectou, atribuimos ao vector "clients" os clients de "newVector"
+  // if(flag) clients = newVector;
 }
 
 
-// void newConnectionCallback(uint32_t nodeId) {
-//     Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
-// }
 
-// void changedConnectionCallback() {
-//   Serial.printf("Changed connections\n");
-// }
+void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status){
 
-// void nodeTimeAdjustedCallback(int32_t offset) {
-//     Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(),offset);
-// }
+  if(status == 0){
+    Serial.println("Entregado com sucesso");
+  }else{
+    Serial.println("Falha ao entregar");
+  }
+} 
 
+
+
+void onDataReceive(const uint8_t *macAddr, const uint8_t *incomingData, int len){
+  Serial.println("Mensagem Recebida: ");
+  
+  char incomingMessage[30];
+  char currentRandom[20];
+  char msg[20];
+  char tempMsg[30];
+
+  memcpy(&incomingMessage, incomingData, sizeof(incomingMessage));
+
+  // Serial.println(incomingMessage);
+  
+
+  char* token = strtok(incomingMessage, "*");
+
+  strcpy(currentRandom, token);
+  strcpy(tempMsg, token);
+  token = strtok(NULL,"*");
+  strcat(msg, token);
+  strcat(tempMsg, "*");
+  strcat(tempMsg, token);
+
+  Serial.println(tempMsg);
+
+  if(strcmp(currentRandom, lastRandom) == 0){
+    return;
+  }
+
+  esp_now_send(macPeers[0], (uint8_t *) & tempMsg, sizeof(tempMsg) );
+  
+  strcpy(lastRandom, currentRandom);
+  
+//   if(incomingMessage == ""){
+//     digitalWrite(2,LOW);
+//   }else{
+//     digitalWrite(2,HIGH);
+//   } 
+}
+
+
+void setupESPNOW(){
+  Serial.print("MAC Adress: ");
+  Serial.println(WiFi.macAddress());
+
+  WiFi.disconnect();
+
+  if(esp_now_init() == ESP_OK){
+    Serial.println("ESP Now inicializado com sucesso");
+    //digitalWrite(2, LOW);
+  } else {
+    Serial.println("ESP Now falhou");
+    ESP.restart();
+  }
+  
+  
+
+  esp_now_register_recv_cb(onDataReceive);
+  esp_now_register_send_cb(onDataSent);
+}
 
 
 
@@ -517,83 +409,84 @@ void receivedCallback(uint32_t from, String & cmd) {
 
 
 
-// void availableClient(){
-//   if(server.hasClient()){
-//     for(int i=0;i < MAXCLIENTS; i++){
-//      if(!clients[i] || !clients[i].connected()){
-//         if(clients[i]){
-//           clients[i].stop();
-//         }
-//         if(clients[i] = server.available()){
-//           Serial.println("Novo Cliente: " + String(i+1));
-//         }
-//         continue;
-//       }
-//     }
-//     //Serial.println(String(clients[1]));
-//     WiFiClient clients = server.available();
-//     clients.stop();
-//   }
-// }
+void availableClient(){
+  if(server.hasClient()){
+    for(int i=0;i < MAXCLIENTS; i++){
+     if(!clients[i] || !clients[i].connected()){
+        if(clients[i]){
+          clients[i].stop();
+        }
+        if(clients[i] = server.available()){
+          Serial.println("Novo Cliente: " + String(i+1));
+        }
+        continue;
+      }
+    }
+    //Serial.println(String(clients[1]));
+    WiFiClient clients = server.available();
+    clients.stop();
+  }
+}
 
 
 
-// void availableMessage(){
-//   for(int i=0;i < MAXCLIENTS; i++){
-//     if(clients[i] && clients[i].connected() && clients[i].available() ){
-//       while(clients[i].available()){
-//         msg = clients[i].readStringUntil('*');
-//         clients[i].flush();
-//         Serial.println("Cliente " + String(i+1) + ": " + msg );
-//         handleClient();
-//       }
-//     }
-//   }
-// }
+void availableMessage(){
+  for(int i=0;i < MAXCLIENTS; i++){
+    if(clients[i] && clients[i].connected() && clients[i].available() ){
+      while(clients[i].available()){
+        msg = clients[i].readStringUntil('*');
+        clients[i].flush();
+        Serial.println("Cliente " + String(i+1) + ": " + msg );
+        handleClient();
+      }
+    }
+  }
+}
 
-// void handleClient(){ 
-//   int handleClient = msg[0] - '0';
-//   bool myMessage ;
+void handleClient(){ 
+  char buffer[30];
+  int randomNum = random(1,51257);
+  itoa(randomNum, buffer, 10);
+  strcat(buffer, "*on");
 
-//   if(msg[0] == '0'){
-//     myMessage = true; 
-//   }
-//   if(msg[0]== 'i'){
-//     if(msg.lastIndexOf("on") > -1){
-//       digitalWrite(D0, LOW);
-//     }
-//     if(msg.lastIndexOf("off") > -1){
-//       digitalWrite(D0, HIGH);
-//     }
+  
+  if(msg[0]== 'i'){
+    if(msg.lastIndexOf("on") > -1){
     
-//   }
-// }
+      esp_now_send(macPeers[0], (uint8_t *) & buffer, sizeof(buffer) );
+      Serial.print("Send Status: ");
+      
 
-// void setupWiFi(){
+    }
+    if(msg.lastIndexOf("off") > -1){
+     // digitalWrite(D0, HIGH);
+    }
+    
+  }
+}
+
+void setupWiFi(){
   
-//   WiFi.begin(SSID, PASSWORD);
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP(SSID, PASSWORD);
+  WiFi.config(ip, gateway, subnet);
   
-//   //WiFi.disconnect();
+  //WiFi.disconnect();
 
-//   WiFi.config(ip, gateway, subnet);
+  // while (WiFi.status() != WL_CONNECTED){
+  //   delay(1000);
+  //   Serial.print(".");
+  // }
 
-//   // while (WiFi.status() != WL_CONNECTED){
-//   //   delay(500);
-//   //   Serial.print(".");
-//   // }
+  //digitalWrite(2, LOW)
 
-//   //digitalWrite(2, LOW);
 
-//   Serial.println("");
-//   Serial.println("ESP32 está funcionando como AP. ");
-  
-//   server.begin();
+  server.begin();
+  Serial.println("Servidor Conectado");
+  Serial.print("IP para se conectar ao NodeMCU: ");
+  Serial.println(WiFi.softAPIP());
 
-//   // Serial.println("Servidor Conectado");
-//   // Serial.print("IP para se conectar ao NodeMCU: ");
-//   // Serial.println(WiFi.localIP());
-
-// }
+}
 
   // if(msg.lastIndexOf("on") > -1){
   //   myMessage = true;

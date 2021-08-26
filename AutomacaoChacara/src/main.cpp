@@ -143,7 +143,7 @@ void setup(){
   
   setupWiFi();
   
-  //setupESPNOW();220822+
+  //setupESPNOW();//220822+
 
   
   Wire.begin(D1, D2);
