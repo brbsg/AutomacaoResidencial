@@ -10,7 +10,7 @@ const {height, width} = Image.resolveAssetSource(require('../assets/Images/Plant
 const imageRatio = height/width
 
 
-export default () =>{
+export default (props) =>{
     const [lightState, setLightState] = useState('lightbulb-outline')
     const [buttonSize, setLightSize] = useState(screenWidth*0.07)
     const [paddingState, setPaddingState] = useState(0)
@@ -65,11 +65,12 @@ export default () =>{
             style = {styles.imageStyle}
             source = {require('../assets/Images/PlantaCasaBSBCarros.jpg')} 
             >
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:gustavoRoom.paddingState}, styles.gustavoRoom]} onPress = {_ => handleLamp('gustavoRoom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:gustavoRoom.paddingState}, styles.gustavoRoom]} onPress = {_ => {props.onClick('gustavoRoom')
+                                                                                                                                                }} >
                     <Icon name={gustavoRoom.state} size={gustavoRoom.buttonSize} color='#0009' />
                 </TouchableOpacity>
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:gate.paddingState}, styles.gate]} onPress = {_ => handleLamp('gate')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:gate.paddingState}, styles.gate]} onPress = {props.onClick} >
                     <Icon name={gate.state} size={gate.buttonSize} color='#0009' />
                 </TouchableOpacity>
 

@@ -71,11 +71,7 @@ export default props => {
   }
 
   const handleGate = () => {
-    con.write("0on*")
-    // setButton(true)
-    // setTimeout(()=>{
-    //   setButton(false)
-    // },300)
+    con.write("GATEon*")
   }
 
   const sendTimerData = (hourTimer1,minuteTimer1,hourTimer2, minuteTimer2, daysIrrigating) => {
@@ -143,7 +139,7 @@ export default props => {
           {/* <Button title={'On/Off'} onPress={e => handleLamp(e,'0')} /> 
           <Button title={'On/Off'} onPress={e => handleLamp(e,'1')} /> 
           <TouchableHighlight title={'On/Off'} disabled={button} onPress={handleGate} />  */}
-        <HouseFloorPlan />
+        <HouseFloorPlan onClick={handleGate} />
 
         <View style={{backgroundColor:'white', height:screenHeight*0.1}} ></View>
        

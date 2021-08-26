@@ -447,13 +447,15 @@ void handleClient(){
   char buffer[30];
   int randomNum = random(1,51257);
   itoa(randomNum, buffer, 10);
-  strcat(buffer, "*on");
+  strcat(buffer, "*");
+  strcat(buffer, msg.c_str());
 
+  esp_now_send(macPeers[0], (uint8_t *) & buffer, sizeof(buffer) );
   
+
   if(msg[0]== 'i'){
     if(msg.lastIndexOf("on") > -1){
     
-      esp_now_send(macPeers[0], (uint8_t *) & buffer, sizeof(buffer) );
       Serial.print("Send Status: ");
       
 
