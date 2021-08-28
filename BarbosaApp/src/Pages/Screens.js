@@ -15,9 +15,7 @@ export default props => {
   const [port, setPort] = useState('80')
   const [con, setCon] = useState(null)
 
-  const [gate,setGate] = useState(false)
-
-  const [onOffButton, setOnOffButton] = useState(true)
+  const [onOffButton, setOnOffButton] = useState(false)
   const [button, setButton] = useState(false);
 
   
@@ -61,17 +59,31 @@ export default props => {
 
   const handleLamp = ( e, id) => {
   
-    onOffButton ? (
-      con.write(id + "on*"),
-      setOnOffButton(!onOffButton)
-    ) : (
-      con.write(id +"off*"),
-      setOnOffButton(!onOffButton)
-    )
+    // onOffButton ? (
+    //   con.write(id + "on*"),
+    //   setOnOffButton(!onOffButton)
+    // ) : (
+    //   con.write(id +"off*"),
+    //   setOnOffButton(!onOffButton)
+    // )
   }
 
-  const handleGate = () => {
-    con.write("GATEon*")
+  const handleClick = (room) => {
+    con.write(room + '*')
+
+    console.log(room)
+    // if(room == 'GATE'){
+    //   //con.write("GATEon*")
+    // }else{
+    //   onOffButton ? (
+    //   //con.write(room + "on*"),
+    //   setOnOffButton(!onOffButton)
+    // ) : (
+    //   //con.write(room +"off*"),
+    //   setOnOffButton(!onOffButton)
+    // )
+    // }
+
   }
 
   const sendTimerData = (hourTimer1,minuteTimer1,hourTimer2, minuteTimer2, daysIrrigating) => {
@@ -101,13 +113,13 @@ export default props => {
       id: '1',
       title: 'Portão',
       buttonSize: 'big',
-      callback: handleGate
+      callback: handleClick
     },
     {
       id: '2',
       title: ['Luz', 'Luz'],
       buttonSize: 'double',
-      callback: handleGate
+      callback: handleClick
     },
    
   ]
@@ -139,7 +151,7 @@ export default props => {
           {/* <Button title={'On/Off'} onPress={e => handleLamp(e,'0')} /> 
           <Button title={'On/Off'} onPress={e => handleLamp(e,'1')} /> 
           <TouchableHighlight title={'On/Off'} disabled={button} onPress={handleGate} />  */}
-        <HouseFloorPlan onClick={handleGate} />
+        <HouseFloorPlan onClick={handleClick} />
 
         <View style={{backgroundColor:'white', height:screenHeight*0.1}} ></View>
        

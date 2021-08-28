@@ -16,7 +16,7 @@ export default (props) =>{
     const [paddingState, setPaddingState] = useState(0)
 
     const [gustavoRoom, setgustavoRoom] = useState({state: 'lightbulb-outline', paddingState: 0, buttonSize: screenWidth*0.07})
-    const [gate, setgate] = useState({state: 'gate', paddingState: 0, buttonSize: screenWidth*0.07})
+    const [GATE, setGATE] = useState({state: 'gate', paddingState: 0, buttonSize: screenWidth*0.07})
     const [garage, setgarage] = useState({state: 'lightbulb-outline', paddingState: 0, buttonSize: screenWidth*0.07})
     const [livingRoom, setlivingRoom] = useState({state: 'lightbulb-outline', paddingState: 0, buttonSize: screenWidth*0.07})
     const [diningRoom, setdiningRoom] = useState({state: 'lightbulb-outline', paddingState: 0, buttonSize: screenWidth*0.07})
@@ -35,27 +35,36 @@ export default (props) =>{
                 state:'lightbulb-outline', 
                 buttonSize:screenWidth*0.07, 
                 paddingState:0})`)
+
+                props.onClick(room)
+            
         }else if(eval(room +'.state') == 'lightbulb-outline'){
             eval('set'+ room + `({
                 state:'lightbulb-on-outline',
                 buttonSize:screenWidth*0.08,
                 paddingState:screenWidth*0.012
             })`)
-        } else if(eval(room +'.state') == 'gate'){
+
+            props.onClick(room)
+            
+        }else if(eval(room +'.state') == 'gate'){
+            props.onClick(room)
             eval('set'+ room + `({
                 ...${room},
                 state:'gate-open',
             })`)
-        }else if(eval(room +'.state') == 'gate-open'){
-            eval('set'+ room + `({
-                ...${room},
-                state:'gate',
-            })`)
+            setTimeout(() => {
+                eval('set'+ room + `({
+                    ...${room},
+                    state:'gate',
+                })`)
+            }, 300);
         }
     }
 
-    const handleLamp = (room) => {
-        changeLampState(room)     
+    const handleClick = (room) => {
+        changeLampState(room)
+             
     } 
    
     return(
@@ -65,61 +74,60 @@ export default (props) =>{
             style = {styles.imageStyle}
             source = {require('../assets/Images/PlantaCasaBSBCarros.jpg')} 
             >
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:gustavoRoom.paddingState}, styles.gustavoRoom]} onPress = {_ => {props.onClick('gustavoRoom')
-                                                                                                                                                }} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:gustavoRoom.paddingState}, styles.gustavoRoom]} onPress = {_=>handleClick('gustavoRoom')} >
                     <Icon name={gustavoRoom.state} size={gustavoRoom.buttonSize} color='#0009' />
                 </TouchableOpacity>
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:gate.paddingState}, styles.gate]} onPress = {props.onClick} >
-                    <Icon name={gate.state} size={gate.buttonSize} color='#0009' />
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:GATE.paddingState}, styles.GATE]} onPress = {_=>handleClick('GATE')} >
+                    <Icon name={GATE.state} size={GATE.buttonSize} color='#0009' />
                 </TouchableOpacity>
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:garage.paddingState}, styles.garage]} onPress = {_=>handleLamp('garage')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:garage.paddingState}, styles.garage]} onPress = {_=>handleClick('garage')} >
                     <Icon name={garage.state} size={garage.buttonSize} color='#0009' />
                 </TouchableOpacity>
                 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:livingRoom.paddingState}, styles.livingRoom]} onPress = {_=>handleLamp('livingRoom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:livingRoom.paddingState}, styles.livingRoom]} onPress = {_=>handleClick('livingRoom')} >
                     <Icon name={livingRoom.state} size={livingRoom.buttonSize} color='#0009' />
                 </TouchableOpacity>
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:diningRoom.paddingState}, styles.diningRoom]} onPress = {_=>handleLamp('diningRoom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:diningRoom.paddingState}, styles.diningRoom]} onPress = {_=>handleClick('diningRoom')} >
                     <Icon name={diningRoom.state} size={diningRoom.buttonSize} color='#0009' />
                 </TouchableOpacity>
                                     
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:parentsRoom.paddingState}, styles.parentsRoom]} onPress = {_=>handleLamp('parentsRoom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:parentsRoom.paddingState}, styles.parentsRoom]} onPress = {_=>handleClick('parentsRoom')} >
                     <Icon name={parentsRoom.state} size={parentsRoom.buttonSize} color='#0009' />
                 </TouchableOpacity>
                                     
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:parentsBathroom.paddingState}, styles.parentsBathroom]} onPress = {_=>handleLamp('parentsBathroom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:parentsBathroom.paddingState}, styles.parentsBathroom]} onPress = {_=>handleClick('parentsBathroom')} >
                     <Icon name={parentsBathroom.state} size={parentsBathroom.buttonSize} color='#0009' />
                 </TouchableOpacity>
                                     
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:commonBathroom.paddingState}, styles.commonBathroom]} onPress = {_=>handleLamp('commonBathroom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:commonBathroom.paddingState}, styles.commonBathroom]} onPress = {_=>handleClick('commonBathroom')} >
                     <Icon name={commonBathroom.state} size={commonBathroom.buttonSize} color='#0009' />
                 </TouchableOpacity>
                                     
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:roomHall.paddingState}, styles.roomHall]} onPress = {_=>handleLamp('roomHall')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:roomHall.paddingState}, styles.roomHall]} onPress = {_=>handleClick('roomHall')} >
                     <Icon name={roomHall.state} size={roomHall.buttonSize} color='#0009' />
                 </TouchableOpacity>
                                     
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:guestsRoom.paddingState}, styles.guestsRoom]} onPress = {_=>handleLamp('guestsRoom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:guestsRoom.paddingState}, styles.guestsRoom]} onPress = {_=>handleClick('guestsRoom')} >
                     <Icon name={guestsRoom.state} size={guestsRoom.buttonSize} color='#0009' />
                 </TouchableOpacity>
                                     
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:kitchenHall.paddingState}, styles.kitchenHall]} onPress = {_=>handleLamp('kitchenHall')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:kitchenHall.paddingState}, styles.kitchenHall]} onPress = {_=>handleClick('kitchenHall')} >
                     <Icon name={kitchenHall.state} size={kitchenHall.buttonSize} color='#0009' />
                 </TouchableOpacity>
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:guilhermeRoom.paddingState}, styles.guilhermeRoom]} onPress = {_=>handleLamp('guilhermeRoom')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:guilhermeRoom.paddingState}, styles.guilhermeRoom]} onPress = {_=>handleClick('guilhermeRoom')} >
                     <Icon name={guilhermeRoom.state} size={guilhermeRoom.buttonSize} color='#0009' />
                 </TouchableOpacity>
 
-                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:kitchen.paddingState}, styles.kitchen]} onPress = {_=>handleLamp('kitchen')} >
+                <TouchableOpacity style = {[styles.lightMainStyle,{paddingBottom:kitchen.paddingState}, styles.kitchen]} onPress = {_=>handleClick('kitchen')} >
                     <Icon name={kitchen.state} size={kitchen.buttonSize} color='#0009' />
                 </TouchableOpacity>
                                     
@@ -153,7 +161,7 @@ const styles = StyleSheet.create({
         bottom:screenWidth/imageRatio*0.9*0.625,
         right:screenWidth*0.9*0.1,
     },
-    gate:{
+    GATE:{
         position:'absolute',
         bottom:screenWidth/imageRatio*0.9*(-0.01),
         right:screenWidth*0.9*0.62,

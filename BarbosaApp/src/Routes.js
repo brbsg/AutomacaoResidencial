@@ -6,7 +6,7 @@ import LoginPage from './Pages/LoginPage'
 const Routes = createAppContainer(
     createSwitchNavigator(
         {LoginPage, LoggedScreen},
-        {initialRouteName: 'LoginPage', backBehavior: 'history'}    
+        {initialRouteName: 'LoggedScreen', backBehavior: 'history'}    
     ),
 )
 

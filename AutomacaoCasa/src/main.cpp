@@ -7,7 +7,6 @@
 // #include <Wire.h>
 //#include <IRremoteESP8266.h>
 
-#define ID_NODE "ID:1-"
 
 #define MAXCLIENTS 8
 #define CHANNEL 1
@@ -50,12 +49,12 @@ void refreshConnections();
 
 // // //hw_timer_t *timer = NULL;
 
-WiFiServer server(PORT);
+WiFiServer server(80);
 WiFiClient clients[MAXCLIENTS];
 
 
-IPAddress ip(192, 168, 4, 1);
-IPAddress gateway(192, 168, 0, 1);
+IPAddress ip(192, 168, 10, 100);
+IPAddress gateway(192, 168, 10, 200);
 IPAddress subnet(255, 255, 255, 0);
 
 String msg;
@@ -80,7 +79,7 @@ uint8_t macPeers[6][6] = {
 // // // seco = 766
 // // // molhado = 380
 
-char lastRandom[20];
+char lastRandom[30];
 
 // char weekDays[7][8] = {"Domingo","Segunda","Terca", "Quarta", "Quinta", "Sexta", "Sabado"};
 // int segundo = 0;
@@ -109,10 +108,11 @@ void setup(){
   // startMillis = millis();
 
   pinMode(BUILTIN_LED, OUTPUT);
-  pinMode(FLASH_BUTTON, INPUT_PULLUP);
   digitalWrite(BUILTIN_LED, LOW);
 
+
   setupWiFi();
+
   
   setupESPNOW();
 
@@ -234,7 +234,7 @@ void loop(){
 
 void refreshConnections(){
   // Flag que indica se pelo menos um client ser desconectou
-  bool flag = false;
+ // bool flag = false;
   
   // Objeto que receberá apenas os clients conectados
  // std::vector<WiFiClient> newVector;
@@ -484,9 +484,9 @@ void setupWiFi(){
 
 
   server.begin();
-  Serial.println("Servidor Conectado");
-  Serial.print("IP para se conectar ao NodeMCU: ");
-  Serial.println(WiFi.softAPIP());
+  // Serial.println("Servidor Conectado");
+  // Serial.print("IP para se conectar ao NodeMCU: ");
+  //Serial.println(WiFi.softAPIP());
 
 }
 
