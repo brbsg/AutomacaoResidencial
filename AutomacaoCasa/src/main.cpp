@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <WiFiServer.h>
 #include <WiFi.h>
 #include <esp_now.h>
 // #include <SD.h>
@@ -13,7 +12,7 @@
 #define BUILTIN_LED 2
 #define FLASH_BUTTON 0 
 
-#define SSID "TToni"
+#define SSID "Toni"
 #define PASSWORD "oliveira" 
 #define PORT 80
 
@@ -40,6 +39,19 @@ void refreshConnections();
 
 
 
+IPAddress local_IP(192, 168,0, 117);
+IPAddress gateway(192, 168, 0, 1);
+IPAddress subnet(255, 255, 255, 0);
+IPAddress primaryDNS(8, 8, 8, 8);   
+IPAddress secondaryDNS(8, 8, 4, 4);
+
+
+WiFiClient clients[MAXCLIENTS];
+WiFiServer server(PORT);
+
+
+
+
 // // //========================================================
 
 
@@ -49,13 +61,7 @@ void refreshConnections();
 
 // // //hw_timer_t *timer = NULL;
 
-WiFiServer server(80);
-WiFiClient clients[MAXCLIENTS];
 
-
-IPAddress ip(192, 168, 10, 100);
-IPAddress gateway(192, 168, 10, 200);
-IPAddress subnet(255, 255, 255, 0);
 
 String msg;
 
@@ -65,14 +71,11 @@ String msg;
 
 
 
-uint8_t macPeers[6][6] = {
+uint8_t macPeers[][6] = {
   {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, //MAC de Broadcast
   //{0x3C, 0x61, 0x05, 0x12, 0xA1, 0x20}, // MAC ESP32 Master
   {0xE8, 0x68, 0xE7, 0x44, 0x60, 0x0B}, // MAC Sonoff Portão
-  {0xD8, 0xBF, 0xC0, 0x10, 0xC1, 0x11},
-  {0xDC, 0x4F, 0x22, 0x7E, 0x4D, 0x33},
-  {0xEC, 0xFA, 0xBC, 0x62, 0xB4, 0xF0},
-  {0x2C, 0xF4, 0x32, 0x49, 0xD0, 0xC7},
+
   };
 
 
@@ -100,6 +103,28 @@ char lastRandom[30];
 
 // //========================================================
 
+void setupWiFi(){
+  
+  WiFi.config(local_IP, gateway, subnet); 
+  
+  WiFi.begin(SSID, PASSWORD);
+
+  while (WiFi.status() != WL_CONNECTED){
+    delay(500);
+    Serial.print(".");
+  }
+
+  //digitalWrite(2, LOW)
+
+
+  server.begin();
+
+  Serial.println("Servidor Conectado");
+  Serial.print("IP para se conectar ao NodeMCU: ");
+  Serial.println(WiFi.localIP());
+  //Serial.println(WiFi.softAPIP());
+
+}
 
 
 void setup(){
@@ -107,15 +132,13 @@ void setup(){
 
   // startMillis = millis();
 
-  pinMode(BUILTIN_LED, OUTPUT);
-  digitalWrite(BUILTIN_LED, LOW);
+  // pinMode(BUILTIN_LED, OUTPUT);
+  // digitalWrite(BUILTIN_LED, LOW);
 
-
-  setupWiFi();
-
+  setupWiFi();  
   
   setupESPNOW();
-
+  
   int slavesCount = sizeof(macPeers)/6/sizeof(uint8_t);
 
   for(int i=0; i<slavesCount; i++){
@@ -126,8 +149,9 @@ void setup(){
     memcpy(slave.peer_addr,macPeers[i], sizeof(macPeers[i]));
 
     esp_now_add_peer(&slave);
+
   }
-  
+
   // Wire.begin(D1, D2);
   // Wire.status();
   // if(rtc.begin()){
@@ -155,7 +179,8 @@ void setup(){
 
 
 void loop(){
-  
+
+
   availableClient();
   availableMessage();
 
@@ -315,7 +340,6 @@ void setupESPNOW(){
   Serial.print("MAC Adress: ");
   Serial.println(WiFi.macAddress());
 
-  WiFi.disconnect();
 
   if(esp_now_init() == ESP_OK){
     Serial.println("ESP Now inicializado com sucesso");
@@ -324,16 +348,11 @@ void setupESPNOW(){
     Serial.println("ESP Now falhou");
     ESP.restart();
   }
-  
-  
 
   esp_now_register_recv_cb(onDataReceive);
   esp_now_register_send_cb(onDataSent);
+
 }
-
-
-
-
 
 
 
@@ -467,28 +486,7 @@ void handleClient(){
   }
 }
 
-void setupWiFi(){
-  
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(SSID, PASSWORD);
-  WiFi.config(ip, gateway, subnet);
-  
-  //WiFi.disconnect();
 
-  // while (WiFi.status() != WL_CONNECTED){
-  //   delay(1000);
-  //   Serial.print(".");
-  // }
-
-  //digitalWrite(2, LOW)
-
-
-  server.begin();
-  // Serial.println("Servidor Conectado");
-  // Serial.print("IP para se conectar ao NodeMCU: ");
-  //Serial.println(WiFi.softAPIP());
-
-}
 
   // if(msg.lastIndexOf("on") > -1){
   //   myMessage = true;

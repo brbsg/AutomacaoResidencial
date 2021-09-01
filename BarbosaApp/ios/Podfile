@@ -8,6 +8,8 @@ target 'MyHome' do
 
   use_react_native!(:path => config["reactNativePath"])
 
+  pod 'react-native-tcp-socket', :path => '../node_modules/react-native-tcp-socket'
+
   target 'MyHomeTests' do
     inherit! :complete
     # Pods for testing

@@ -5,11 +5,13 @@
 #define NODE_ID "gustavoRoom"
 
 #define RELAY 12
+#define LIGHT_SWITCH 4
 #define CHANNEL 1
 
 void setupWiFi();
 void onDataSent(uint8_t *macAddr, uint8_t sendStatus);
 void onDataReceive(uint8_t *macAddr, uint8_t *incomingData, uint8_t len);
+void setupESPNOW();
 
 uint8_t macPeers[6][6] = {
   {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, //MAC de Broadcast
@@ -26,13 +28,17 @@ uint8_t macPeers[6][6] = {
 char lastRandom[20];
 bool openGate = false;
 
+int buttonPushCounter = 0;   
+int buttonState = 0;         
+int lastButtonState = 1; 
+
   
 void setup() {
   delay(2000);
   Serial.begin(115200);
 
-  pinMode(12,OUTPUT);
-  pinMode(4, INPUT);
+  pinMode(RELAY,OUTPUT);
+  pinMode(LIGHT_SWITCH, INPUT);
 
 
   WiFi.mode(WIFI_STA);
@@ -46,10 +52,18 @@ void setup() {
 
 void loop() {
 
-  if(digitalRead(4)!= digitalRead(12){
-    digitalWrite(12, !digitalRead(12));  
+ // read the pushbutton input pin:
+  buttonState = digitalRead(LIGHT_SWITCH);
+
+  // compare the buttonState to its previous state
+  if (buttonState != lastButtonState) {
+    digitalWrite(RELAY, !digitalRead(RELAY));
+    delay(50); // Delay a little bit to avoid bouncing
   }
   
+  lastButtonState = buttonState; // save the current state as the last state, for next time through the loop
+
+
   if(openGate){
     digitalWrite(12, HIGH);
     delay(250);
@@ -78,12 +92,12 @@ void onDataReceive(uint8_t *macAddr, uint8_t *incomingData, uint8_t len){
   char incomingMessage[30];
   char msg[30];
   char tempOn[30] = NODE_ID;
-  char tempOff[30] = NODE_ID;
+  //char tempOff[30] = NODE_ID;
   char tempMsg[30];
   char currentRandom[30];
 
-  strcat(tempOn, "on");  
-  strcat(tempOff, "off");
+//  strcat(tempOn, "on");  
+//  strcat(tempOff, "off");
 
   strcpy(msg, "");//Tem que inicializar o msg com uma string vazia senão dá ruim. Por que? Não tenho a mínima ideia.
 
@@ -114,9 +128,11 @@ void onDataReceive(uint8_t *macAddr, uint8_t *incomingData, uint8_t len){
   }else{
      if(strcmp(tempOn, msg) == 0){
 
-      digitalWrite(12, LOW);
-    }else if(strcmp(tempOff, msg) == 0){
-      digitalWrite(12, HIGH);
+      digitalWrite(RELAY, !digitalRead(RELAY));
+     // lastButtonState = digitalRead(RELAY);
+      
+//    }else if(strcmp(tempOff, msg) == 0){
+//      //digitalWrite(12, HIGH);
     }
   }
 
