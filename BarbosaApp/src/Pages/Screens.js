@@ -11,7 +11,7 @@ const screenHeight = Dimensions.get('window').height
 
 export default props => {
   const [hasConnection,setHasConnection] = useState(false)
-  const [host, setHost] = useState("192.168.4.1")
+  const [host, setHost] = useState("192.168.10.102")
   const [port, setPort] = useState('80')
   const [con, setCon] = useState(null)
 
@@ -105,7 +105,7 @@ export default props => {
   }
 
   useEffect(()=>{
-   // connectButton()
+    connectButton()
   },[])
 
   const data = [

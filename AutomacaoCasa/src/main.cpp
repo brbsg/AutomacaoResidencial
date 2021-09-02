@@ -39,8 +39,8 @@ void refreshConnections();
 
 
 
-IPAddress local_IP(192, 168,0, 117);
-IPAddress gateway(192, 168, 0, 1);
+IPAddress local_IP(192, 168,4, 117);
+IPAddress gateway(192, 168, 4, 1);
 IPAddress subnet(255, 255, 255, 0);
 IPAddress primaryDNS(8, 8, 8, 8);   
 IPAddress secondaryDNS(8, 8, 4, 4);
@@ -103,28 +103,7 @@ char lastRandom[30];
 
 // //========================================================
 
-void setupWiFi(){
-  
-  WiFi.config(local_IP, gateway, subnet); 
-  
-  WiFi.begin(SSID, PASSWORD);
 
-  while (WiFi.status() != WL_CONNECTED){
-    delay(500);
-    Serial.print(".");
-  }
-
-  //digitalWrite(2, LOW)
-
-
-  server.begin();
-
-  Serial.println("Servidor Conectado");
-  Serial.print("IP para se conectar ao NodeMCU: ");
-  Serial.println(WiFi.localIP());
-  //Serial.println(WiFi.softAPIP());
-
-}
 
 
 void setup(){
@@ -469,6 +448,11 @@ void handleClient(){
   strcat(buffer, "*");
   strcat(buffer, msg.c_str());
 
+  if(strcmp(msg.c_str(), "GATE")==0){
+    strcat(buffer, "on");
+
+  }
+
   esp_now_send(macPeers[0], (uint8_t *) & buffer, sizeof(buffer) );
   
 
@@ -486,6 +470,28 @@ void handleClient(){
   }
 }
 
+void setupWiFi(){
+  
+  //WiFi.config(local_IP, gateway, subnet); 
+  
+  WiFi.begin(SSID, PASSWORD);
+
+  while (WiFi.status() != WL_CONNECTED){
+    delay(500);
+    Serial.print(".");
+  }
+
+  //digitalWrite(2, LOW)
+
+
+  server.begin();
+
+  Serial.println("Servidor Conectado");
+  Serial.print("IP para se conectar ao NodeMCU: ");
+  Serial.println(WiFi.localIP());
+  //Serial.println(WiFi.softAPIP());
+
+}
 
 
   // if(msg.lastIndexOf("on") > -1){
@@ -501,6 +507,9 @@ void handleClient(){
   // if(msg.lastIndexOf("client01-close") > -1){
     
   // }
+
+
+
     
 
 
